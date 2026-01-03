@@ -20,6 +20,18 @@ jobs:
       - name: Build Docker Image
         run: docker build -t my-secure-app .
 
+#security
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'my-secure-app'
+          format: 'table'
+          # exit-code: 1 means "Fail the pipeline if you find issues"
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
       # Step 3: Run the container in the background
       - name: Start Container
         run: docker run -d -p 8080:8080 --name test-container my-secure-app
