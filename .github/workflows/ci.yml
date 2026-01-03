@@ -18,7 +18,7 @@ jobs:
       - name: Install and Run Bandit
         run: |
           pip install bandit
-          bandit -r . -ll
+          bandit -r . 
 
       # Step 2: Build the Docker image (just like you did locally)
       - name: Build Docker Image
