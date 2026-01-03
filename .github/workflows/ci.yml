@@ -12,19 +12,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Download your code from the repo
       - name: Checkout Code
         uses: actions/checkout@v3
 
-#sast
-      - name: Security Check - Bandit
-        uses: hijack/action-bandit@v2
-        with:
-          python_version: 3.9
-      # Check all files in the current folder (.)
-          targets: '.'
-      # Level high means "Only stop me if it's a serious security risk"
-          level: 'high'
+      - name: Install and Run Bandit
+        run: |
+          pip install bandit
+          bandit -r . -ll
 
       # Step 2: Build the Docker image (just like you did locally)
       - name: Build Docker Image
