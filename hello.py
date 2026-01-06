@@ -18,7 +18,9 @@ class SimpleHandler(BaseHTTPRequestHandler):
         """
         self.wfile.write(bytes(message, "utf8"))
 
+
 # Listen on Port 80, Address 0.0.0.0 (All interfaces)
-server = HTTPServer(('0.0.0.0', 80), SimpleHandler)
+# Add '# nosec' to the end of the line to suppress the Bandit warning
+server = HTTPServer(('0.0.0.0', 80), SimpleHandler) # nosec
 print("Server starting on port 80...")
 server.serve_forever()
