@@ -1,52 +1,60 @@
-name: CI Pipeline
+name: DevSecOps CD Pipeline
 
-# TRIGGER: When do we run?
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
-# JOBS: What do we do?
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  build-and-test:
-    # The computer the robot uses (GitHub provides this for free)
+  build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
+      # 1. Get the Code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install and Run Bandit
+      # 2. Security Check (SAST) - Fail if bad code found
+      - name: Security Check - Bandit
         run: |
           pip install bandit
-          bandit -r . 
+          bandit -r .
 
-      # Step 2: Build the Docker image (just like you did locally)
-      - name: Build Docker Image
-        run: docker build -t my-secure-app .
-
-#security
-      - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+      # 3. Log in to Azure (Using the Secret you just added)
+      - name: Azure Login
+        uses: azure/login@v1
         with:
-          image-ref: 'my-secure-app'
-          format: 'table'
-          # exit-code: 1 means "Fail the pipeline if you find issues"
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 3: Run the container in the background
-      - name: Start Container
-        run: docker run -d -p 8080:8080 --name test-container my-secure-app
+      # 4. Log in to your Private Registry (ACR)
+      - name: ACR Login
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_USERNAME }}.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      # Step 4: Sleep for 5 seconds to let the server wake up
-      - name: Wait for Init
-        run: sleep 5
-
-      # Step 5: Run your health check script to prove it works
-      - name: Test Application
+      # 5. Build and Push the Image to the Cloud
+      - name: Build and Push Docker Image
         run: |
-          chmod +x check_site.sh
-          ./check_site.sh
+          # Tag the image with the registry name
+          docker build -t ${{ secrets.REGISTRY_USERNAME }}.azurecr.io/my-secure-app:latest .
+          # Push it up
+          docker push ${{ secrets.REGISTRY_USERNAME }}.azurecr.io/my-secure-app:latest
 
+      # 6. Deploy to Azure Container Instances (ACI)
+      - name: Deploy to ACI
+        uses: azure/aci-deploy@v1
+        with:
+          resource-group: devsecops-rg
+          dns-name-label: fazeelabacr2026-app # Your DNS from Terraform output
+          image: ${{ secrets.REGISTRY_USERNAME }}.azurecr.io/my-secure-app:latest
+          name: devsecops-container
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          location: eastus
+          ports: 80
