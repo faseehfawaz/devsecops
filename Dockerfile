@@ -14,7 +14,7 @@ COPY . .
 USER secureuser
 
 # Open Port 80
-EXPOSE 80
+EXPOSE 8080
 
 # Run the server
 CMD ["python", "hello.py"]
